@@ -1,16 +1,25 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as ses from 'aws-cdk-lib/aws-ses';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as ses_actions from 'aws-cdk-lib/aws-ses-actions';
+import * as sns_subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
+    const topic = new sns.Topic(this, 'ForwardDiscordSNS');
+    // UCBotSO URL endpoint shouhld go below
+    topic.addSubscription(new sns_subscriptions.UrlSubscription('https://google.com/'));
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'CdkQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
+    const ruleSet = new ses.ReceiptRuleSet(this, 'ForwardDiscordSES');
+    const awsRule = ruleSet.addRule('Aws', {
+      recipients: ['ucbso.discord@gmail.com'],
+      enabled: true,
+      actions: [new ses_actions.Sns({
+        topic
+      })],
+    });
   }
 }
