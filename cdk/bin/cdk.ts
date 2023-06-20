@@ -20,6 +20,6 @@ new CdkStack(app, 'CdkStack', {
   /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
   env: {
     account: "824728550189",
-    region: "us-east-2",
+    region: "us-east-1",
   }
 });
