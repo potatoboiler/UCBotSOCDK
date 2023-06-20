@@ -1,8 +1,10 @@
 use std::env;
 
+use aws_lambda_events::{event::sns::SnsEvent, ses::SimpleEmailDisposition};
 use aws_sdk_lambda::Error;
 use lambda_runtime::{service_fn, LambdaEvent};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use serenity::{
     framework::{standard::macros::group, StandardFramework},
     model::prelude::ChannelId,
@@ -34,16 +36,12 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-#[derive(Deserialize)]
-struct Request {
-    message: String,
-}
 #[derive(Serialize)]
 struct Response {
     req_id: String,
 }
 
-async fn handler_fn(event: LambdaEvent<Request>) -> Result<Response, Box<dyn std::error::Error>> {
+async fn handler_fn(event: LambdaEvent<SnsEvent>) -> Result<Response, Box<dyn std::error::Error>> {
     let framework = StandardFramework::new();
     let token = env::var("UCBSO_DISCORD_TOKEN").expect("token");
     let intents = GatewayIntents::non_privileged() | GatewayIntents::GUILD_MESSAGES;
@@ -58,9 +56,25 @@ async fn handler_fn(event: LambdaEvent<Request>) -> Result<Response, Box<dyn std
     }
 
     let (request, context) = event.into_parts();
-    ChannelId(1100661212246724618 as u64)
-        .say(&client.cache_and_http.http, request.message)
-        .await?;
+    let announcements_channel = ChannelId(1100661212246724618 as u64);
+
+    for record in request.records {
+        let email_msg_json: serde_json::Map<String, Value> =
+            serde_json::from_str(record.sns.message.as_str()).unwrap();
+        let email_msg_body = email_msg_json["content"].as_str().unwrap().to_string();
+
+        announcements_channel
+            .say(&client.cache_and_http.http, email_msg_body)
+            .await?;
+
+        println!(
+            "Posted email with subject: {}",
+            record
+                .sns
+                .subject
+                .unwrap_or("Default (null) subject".to_string())
+        );
+    }
 
     Ok(Response {
         req_id: context.request_id,
