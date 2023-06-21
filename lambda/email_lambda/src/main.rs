@@ -22,7 +22,7 @@ impl EventHandler for Handler {}
 async fn main() -> Result<(), Error> {
     // required to enable CloudWatch error logging by the runtime
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
+        .with_max_level(tracing::Level::TRACE)
         // disable printing the name of the module in every log line.
         .with_target(false)
         // this needs to be set to false, otherwise ANSI color codes will
@@ -47,7 +47,7 @@ async fn handler_fn(event: LambdaEvent<SnsEvent>) -> Result<Response, Box<dyn st
     let framework = StandardFramework::new();
     let token = env::var("UCBSO_DISCORD_TOKEN").expect("token");
     let intents = GatewayIntents::non_privileged() | GatewayIntents::GUILD_MESSAGES;
-    let mut client = serenity::Client::builder(token, intents)
+    let client = serenity::Client::builder(token, intents)
         .event_handler(Handler)
         .framework(framework)
         .await
@@ -55,28 +55,28 @@ async fn handler_fn(event: LambdaEvent<SnsEvent>) -> Result<Response, Box<dyn st
 
     tracing::info!("Created client successfully.");
 
-    match client.start().await {
-        Ok(_) => tracing::info!("Successfully started Discord client"),
-        Err(e) => tracing::info!("An error occurred while running the client: {:?}", e),
-    };
-
     tracing::info!("Processing record {:#?}", event);
 
     let (request, context) = event.into_parts();
     let announcements_channel = ChannelId(1100661212246724618 as u64);
 
     for record in request.records {
+        tracing::info!("Processing record: {:?}", record);
         tracing::info!(
-            "Printing email with subject: {}",
+            "Processing email with subject: {}",
             record
                 .sns
                 .subject
                 .clone()
                 .unwrap_or("Default (null) subject".to_string())
         );
-        let email_msg_json: serde_json::Map<String, Value> =
-            serde_json::from_str(record.sns.message.as_str()).unwrap();
+
+        // Examples: https://docs.aws.amazon.com/ses/latest/dg/receiving-email-notifications-examples.html
+        // Format: https://docs.aws.amazon.com/ses/latest/dg/receiving-email-notifications-contents.html
+        let email_msg_json: Value = serde_json::from_str(record.sns.message.as_str()).unwrap();
         let email_msg_body = email_msg_json["content"].as_str().unwrap().to_string();
+        // tracing::info!("{:#?}", email_msg_json);
+        tracing::info!("Email body: {:#?}", email_msg_body);
 
         announcements_channel
             .say(&client.cache_and_http.http, email_msg_body)
@@ -90,9 +90,6 @@ async fn handler_fn(event: LambdaEvent<SnsEvent>) -> Result<Response, Box<dyn st
                 .unwrap_or("Default (null) subject".to_string())
         );
     }
-
-    client.shard_manager.lock().await.shutdown_all().await;
-    tracing::info!("Shutdown all shards.");
 
     Ok(Response {
         req_id: context.request_id,
