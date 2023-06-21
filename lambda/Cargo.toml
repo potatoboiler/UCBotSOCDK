@@ -1,4 +1,5 @@
 [workspace]
 members = [
-    "email_lambda"
+    "email_lambda",
+    "zapier_lambda",
 ]

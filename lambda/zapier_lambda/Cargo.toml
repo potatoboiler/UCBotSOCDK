@@ -1,0 +1,21 @@
+[package]
+name = "zapier_lambda"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lambda_runtime = "0.8.1"
+lambda_http = "*"
+
+tokio = { version = "1", features = ["full"] }
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["ansi", "fmt"] }
+tokio-test = "0.4.2"
+
+serenity = { version = "0.11" }
+
+anyhow = "*"
+snailquote = "*"
+serde_json = "*"
