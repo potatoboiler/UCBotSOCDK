@@ -49,12 +49,18 @@ async fn handler_fn(event: Request) -> Result<impl IntoResponse, anyhow::Error> 
     let json = json.as_object().unwrap();
     // TODO: parse json["body_html"] ?
     let email_body = snailquote::unescape(json["body_plaintext"].as_str().unwrap()).unwrap();
+    let text_file = format!(
+        "From: {}\nSubject: {}\n===\n{}",
+        json["from"].as_str().unwrap(),
+        json["subject"].as_str().unwrap(),
+        email_body
+    );
 
     let announcements_channel = ChannelId(1100661212246724618 as u64);
     announcements_channel
         .send_files(
             &client.cache_and_http.http,
-            vec![(email_body.as_bytes(), "email.txt")],
+            vec![(text_file.as_bytes(), "email.txt")],
             |m| m.content("Fresh email, hot off the presses!"),
         )
         .await?;
